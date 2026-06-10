@@ -484,6 +484,21 @@ def filter_items_by_scope(items, scope_hosts):
     return scoped_items, discarded_items
 
 
+def filter_items_by_status(items, excluded_statuses):
+    filtered_items = []
+    discarded_items = []
+
+    for item in items:
+        status = str(item.get("status", "")).strip()
+
+        if status in excluded_statuses:
+            discarded_items.append(item)
+        else:
+            filtered_items.append(item)
+
+    return filtered_items, discarded_items
+
+
 def get_unique_host_headers(items):
     host_headers = []
     seen_hosts = set()
@@ -616,6 +631,9 @@ def main():
         scope_hosts = set()
         discarded_by_scope = 0
 
+    items, discarded_status_items = filter_items_by_status(items, {"404"})
+    discarded_by_status = len(discarded_status_items)
+
     items = remove_duplicate_items(items)
     host_headers = get_unique_host_headers(items)
 
@@ -634,6 +652,7 @@ def main():
         print(f"Se han descartado {discarded_by_scope} peticiones fuera de scope")
         print(f"Scope cargado desde {args.scope}: {len(scope_hosts)} hosts")
 
+    print(f"Se han descartado {discarded_by_status} peticiones con status 404")
     print(f"Se han guardado {len(inserted_items)} peticiones únicas en {args.database}")
     print(f"Se han generado {len(inserted_items)} referencias en {args.reference}")
 
