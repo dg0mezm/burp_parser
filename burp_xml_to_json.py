@@ -395,22 +395,143 @@ def remove_duplicate_urls(items):
     return unique_items
 
 
+def normalize_host_value(host):
+    host = host.strip().lower()
+
+    if not host:
+        return ""
+
+    if "://" in host:
+        parsed_host = urlsplit(host).netloc
+        host = parsed_host if parsed_host else host
+
+    host = host.split("/")[0]
+    host = host.rstrip(".")
+
+    if host.startswith("[") and "]" in host:
+        return host
+
+    if ":" in host:
+        host = host.split(":", 1)[0]
+
+    return host
+
+
+def load_scope_hosts(scope_file):
+    scope_hosts = set()
+
+    with open(scope_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if line.startswith("#"):
+                continue
+
+            normalized_host = normalize_host_value(line)
+
+            if normalized_host:
+                scope_hosts.add(normalized_host)
+
+    return scope_hosts
+
+
+def get_item_host(item):
+    headers = item.get("entry_points", {}).get("headers", [])
+
+    for header in headers:
+        if header.get("name", "").lower() != "host":
+            continue
+
+        return normalize_host_value(header.get("value", ""))
+
+    url = item.get("url", "")
+    parsed_url = urlsplit(url)
+
+    return normalize_host_value(parsed_url.netloc)
+
+
+def filter_items_by_scope(items, scope_hosts):
+    scoped_items = []
+    discarded_items = []
+
+    for item in items:
+        host = get_item_host(item)
+
+        if host in scope_hosts:
+            scoped_items.append(item)
+        else:
+            discarded_items.append(item)
+
+    return scoped_items, discarded_items
+
+
+def get_unique_host_headers(items):
+    host_headers = []
+    seen_hosts = set()
+
+    for item in items:
+        headers = item.get("entry_points", {}).get("headers", [])
+
+        for header in headers:
+            if header.get("name", "").lower() != "host":
+                continue
+
+            value = header.get("value", "").strip()
+
+            if not value or value in seen_hosts:
+                continue
+
+            seen_hosts.add(value)
+            host_headers.append(value)
+
+    return host_headers
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("input_xml")
     parser.add_argument("output_json")
+    parser.add_argument("--scope", required=False, help="Optional file with in-scope hosts, one per line")
     args = parser.parse_args()
 
     tree = ET.parse(args.input_xml)
     root = tree.getroot()
 
     items = [parse_item(item) for item in find_items(root)]
+    total_items = len(items)
+
+    if args.scope:
+        scope_hosts = load_scope_hosts(args.scope)
+        items, discarded_items = filter_items_by_scope(items, scope_hosts)
+        discarded_by_scope = len(discarded_items)
+    else:
+        scope_hosts = set()
+        discarded_by_scope = 0
+
     items = remove_duplicate_urls(items)
+    host_headers = get_unique_host_headers(items)
 
     with open(args.output_json, "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, indent=2)
 
+    print(f"Se han procesado {total_items} peticiones desde el XML")
+
+    if args.scope:
+        print(f"Se han descartado {discarded_by_scope} peticiones fuera de scope")
+        print(f"Scope cargado desde {args.scope}: {len(scope_hosts)} hosts")
+
     print(f"Se han generado {len(items)} peticiones únicas en {args.output_json}")
+
+    if host_headers:
+        print("Host headers encontrados:")
+
+        for host in host_headers:
+            print(f"- {host}")
+    else:
+        print("No se han encontrado headers Host")
 
 
 if __name__ == "__main__":
