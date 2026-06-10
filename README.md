@@ -45,3 +45,120 @@ app.example.com
 api.example.com
 example.com
 ```
+
+## Example `burp_history.json`
+
+```json
+[
+  {
+    "url": "https://app.example.com/login?redirect=/dashboard",
+    "port": "443",
+    "protocol": "https",
+    "method": "POST",
+    "path": "/login",
+    "status": "302",
+    "cookies": [
+      {
+        "name": "session",
+        "value": "abc123"
+      },
+      {
+        "name": "lang",
+        "value": "en"
+      }
+    ],
+    "entry_points": {
+      "headers": [
+        {
+          "name": "Host",
+          "value": "app.example.com"
+        },
+        {
+          "name": "User-Agent",
+          "value": "Mozilla/5.0"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/x-www-form-urlencoded"
+        },
+        {
+          "name": "Origin",
+          "value": "https://app.example.com"
+        },
+        {
+          "name": "Referer",
+          "value": "https://app.example.com/login"
+        }
+      ],
+      "parameters": [
+        {
+          "source": "query",
+          "name": "redirect",
+          "value": "/dashboard"
+        },
+        {
+          "source": "body",
+          "name": "username",
+          "value": "admin"
+        },
+        {
+          "source": "body",
+          "name": "password",
+          "value": "password123"
+        }
+      ]
+    }
+  },
+  {
+    "url": "https://api.example.com/api/users/123",
+    "port": "443",
+    "protocol": "https",
+    "method": "PUT",
+    "path": "/api/users/123",
+    "status": "200",
+    "cookies": [
+      {
+        "name": "session",
+        "value": "abc123"
+      }
+    ],
+    "entry_points": {
+      "headers": [
+        {
+          "name": "Host",
+          "value": "api.example.com"
+        },
+        {
+          "name": "User-Agent",
+          "value": "Mozilla/5.0"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        }
+      ],
+      "parameters": [
+        {
+          "source": "json",
+          "name": "name",
+          "value": "John Doe"
+        },
+        {
+          "source": "json",
+          "name": "email",
+          "value": "john@example.com"
+        },
+        {
+          "source": "json",
+          "name": "role",
+          "value": "admin"
+        }
+      ]
+    }
+  }
+]
+```
