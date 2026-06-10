@@ -1,3 +1,0 @@
-app.example.com
-api.example.com
-example.com
