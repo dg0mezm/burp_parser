@@ -3,6 +3,7 @@ import base64
 import json
 import re
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
 
@@ -490,6 +491,54 @@ def get_unique_host_headers(items):
     return host_headers
 
 
+def normalize_endpoint_path(item):
+    url = item.get("url", "")
+    parsed_url = urlsplit(url)
+
+    if parsed_url.path:
+        return parsed_url.path
+
+    path = item.get("path", "")
+    parsed_path = urlsplit(path)
+
+    if parsed_path.path:
+        return parsed_path.path
+
+    return "/"
+
+
+def get_unique_endpoints(items):
+    seen_endpoints = set()
+    endpoints = []
+
+    for item in items:
+        method = item.get("method", "").upper()
+        path = normalize_endpoint_path(item)
+
+        endpoint_key = (
+            method,
+            path
+        )
+
+        if endpoint_key in seen_endpoints:
+            continue
+
+        seen_endpoints.add(endpoint_key)
+
+        endpoints.append({
+            "method": method,
+            "path": path
+        })
+
+    return endpoints
+
+
+def get_endpoints_output_file(output_json):
+    output_path = Path(output_json)
+
+    return output_path.with_name("endpoints.json")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("input_xml")
@@ -511,11 +560,17 @@ def main():
         scope_hosts = set()
         discarded_by_scope = 0
 
+    endpoints = get_unique_endpoints(items)
+    endpoints_output_file = get_endpoints_output_file(args.output_json)
+
     items = remove_duplicate_urls(items)
     host_headers = get_unique_host_headers(items)
 
     with open(args.output_json, "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, indent=2)
+
+    with open(endpoints_output_file, "w", encoding="utf-8") as f:
+        json.dump(endpoints, f, ensure_ascii=False, indent=2)
 
     print(f"Se han procesado {total_items} peticiones desde el XML")
 
@@ -524,6 +579,7 @@ def main():
         print(f"Scope cargado desde {args.scope}: {len(scope_hosts)} hosts")
 
     print(f"Se han generado {len(items)} peticiones únicas en {args.output_json}")
+    print(f"Se han generado {len(endpoints)} endpoints únicos en {endpoints_output_file}")
 
     if host_headers:
         print("Host headers encontrados:")
